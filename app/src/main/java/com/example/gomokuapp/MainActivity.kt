@@ -66,9 +66,6 @@ interface GomokuApi {
 // --- メイン画面 ---
 
 class MainActivity : AppCompatActivity() {
-
-    // ★重要: パソコンのサーバーアドレス
-    // エミュレータからPCを見る場合は "http://10.0.2.2/gomoku/" が標準です
     private val BASE_URL = "https://phpdb.homeserver1.tech/gomoku/"
 
     private lateinit var api: GomokuApi
@@ -145,7 +142,7 @@ class MainActivity : AppCompatActivity() {
         pollingJob = lifecycleScope.launch {
             while (true) {
                 fetchState()
-                delay(2000) // 2秒ごとに更新
+                delay(2000)
             }
         }
     }
@@ -159,7 +156,7 @@ class MainActivity : AppCompatActivity() {
 
                 boardView.player1Id = state.player1Id
                 boardView.moves = state.moves
-                boardView.invalidate() // 再描画
+                boardView.invalidate()
 
                 if (state.status == "waiting") {
                     statusText.text = "対戦相手を待っています..."
@@ -185,7 +182,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         } catch (e: Exception) {
-            // エラーは無視して再試行
         }
     }
 
