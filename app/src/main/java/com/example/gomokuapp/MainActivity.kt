@@ -18,6 +18,11 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Query
 import java.util.UUID
+import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.HttpURLConnection
+import java.net.URL
 
 // --- データクラス定義 ---
 
@@ -66,7 +71,62 @@ interface GomokuApi {
 // --- メイン画面 ---
 
 class MainActivity : AppCompatActivity() {
-    private val BASE_URL = "https://phpdb.homeserver1.tech/gomoku/"
+    private val serverCandidates = listOf(
+        "http://phpdb.homeserver1/gomoku/",
+        "http://172.23.72.107/gomoku/"
+    )
+
+    // 決定したURLを入れる変数（初期値はnullまたはデフォルト）
+    private var currentBaseUrl: String? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // アプリ起動時に最適なサーバーを探す
+        findActiveServer()
+    }
+
+    private fun findActiveServer() {
+        lifecycleScope.launch(Dispatchers.IO) { // ネットワーク処理なのでIOスレッドで行う
+            var activeUrl: String? = null
+
+            for (urlStr in serverCandidates) {
+                if (isServerReachable(urlStr)) {
+                    activeUrl = urlStr
+                    break // 繋がったらループを抜ける
+                }
+            }
+
+            // メインスレッドに戻って結果を反映
+            withContext(Dispatchers.Main) {
+                if (activeUrl != null) {
+                    currentBaseUrl = activeUrl
+                    Log.d("ServerCheck", "接続成功: $currentBaseUrl")
+                } else {
+                    Log.e("ServerCheck", "全サーバー接続不可")
+                }
+            }
+        }
+    }
+
+    // 実際に接続テストをする関数
+    private fun isServerReachable(urlString: String): Boolean {
+        return try {
+            val url = URL(urlString)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "HEAD" // 中身までは見ない（軽量な確認）
+            connection.connectTimeout = 2000  // 2秒で諦める（重要）
+            connection.readTimeout = 2000
+
+            // 200 OK などが返ってきたら成功とみなす
+            val code = connection.responseCode
+            connection.disconnect()
+            code in 200..299
+        } catch (e: Exception) {
+            false
+        }
+    }
 
     private lateinit var api: GomokuApi
     private lateinit var boardView: GomokuBoardView
